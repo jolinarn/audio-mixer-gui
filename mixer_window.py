@@ -3,9 +3,11 @@ and a live list of app streams that can be moved to another managed sink."""
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QComboBox,
-    QGroupBox,
+    QFrame,
+    QGraphicsDropShadowEffect,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -17,13 +19,15 @@ from PyQt6.QtWidgets import (
 )
 
 from mixer_backend import AudioMixerBackend
+from title_bar import TitleBar
 
 REFRESH_MS = 1500
 
 
-class SinkPanel(QGroupBox):
+class SinkPanel(QFrame):
     def __init__(self, sink_name: str, other_sink_names: list[str], on_volume, on_mute, on_move):
-        super().__init__(sink_name)
+        super().__init__()
+        self.setObjectName("SinkCard")
         self.sink_name = sink_name
         self.other_sink_names = other_sink_names
         self.on_volume = on_volume
@@ -32,14 +36,23 @@ class SinkPanel(QGroupBox):
         self._suppress_volume_signal = False
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 14, 16, 14)
+        layout.setSpacing(10)
+
+        title = QLabel(sink_name)
+        title.setObjectName("SinkTitle")
+        layout.addWidget(title)
 
         vol_row = QHBoxLayout()
+        vol_row.setSpacing(10)
         self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.setRange(0, 150)
         self.slider.valueChanged.connect(self._slider_changed)
         self.vol_label = QLabel("--%")
-        self.vol_label.setFixedWidth(40)
+        self.vol_label.setObjectName("VolumeLabel")
+        self.vol_label.setFixedWidth(36)
         self.mute_button = QPushButton("Mute")
+        self.mute_button.setObjectName("MuteButton")
         self.mute_button.setCheckable(True)
         self.mute_button.toggled.connect(lambda checked: self.on_mute(self.sink_name, checked))
         vol_row.addWidget(self.slider)
@@ -48,6 +61,7 @@ class SinkPanel(QGroupBox):
         layout.addLayout(vol_row)
 
         self.app_list = QListWidget()
+        self.app_list.setFrameShape(QFrame.Shape.NoFrame)
         layout.addWidget(self.app_list)
 
     def _slider_changed(self, value: int):
@@ -71,13 +85,17 @@ class SinkPanel(QGroupBox):
         for app in apps:
             item = QListWidgetItem()
             self.app_list.addItem(item)
-            self.app_list.setItemWidget(item, self._build_app_row(app))
+            row = self._build_app_row(app)
+            item.setSizeHint(row.sizeHint())
+            self.app_list.setItemWidget(item, row)
 
     def _build_app_row(self, app: dict) -> QWidget:
         row = QWidget()
         row_layout = QHBoxLayout(row)
-        row_layout.setContentsMargins(4, 2, 4, 2)
-        row_layout.addWidget(QLabel(app["label"]))
+        row_layout.setContentsMargins(2, 6, 2, 6)
+        label = QLabel(app["label"])
+        label.setObjectName("AppLabel")
+        row_layout.addWidget(label)
         row_layout.addStretch()
 
         if self.other_sink_names:
@@ -102,16 +120,40 @@ class MixerWindow(QWidget):
     def __init__(self, backend: AudioMixerBackend):
         super().__init__()
         self.backend = backend
+        self.setObjectName("MixerWindowRoot")
         self.setWindowTitle("Audio Mixer")
-        self.resize(420, 500)
+        self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.resize(440, 520)
 
-        layout = QVBoxLayout(self)
+        outer_layout = QVBoxLayout(self)
+        outer_layout.setContentsMargins(14, 14, 14, 14)
+
+        root_card = QFrame()
+        root_card.setObjectName("RootCard")
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(48)
+        shadow.setOffset(0, 12)
+        shadow.setColor(QColor(0, 0, 0, 160))
+        root_card.setGraphicsEffect(shadow)
+        outer_layout.addWidget(root_card)
+
+        root_layout = QVBoxLayout(root_card)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
+        root_layout.addWidget(TitleBar(self))
+
+        content = QVBoxLayout()
+        content.setContentsMargins(16, 8, 16, 16)
+        content.setSpacing(12)
+        root_layout.addLayout(content)
+
         self.panels: dict[str, SinkPanel] = {}
         for name in backend.sink_names:
             others = [n for n in backend.sink_names if n != name]
             panel = SinkPanel(name, others, self._set_volume, self._set_mute, self._move_app)
             self.panels[name] = panel
-            layout.addWidget(panel)
+            content.addWidget(panel)
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh)

@@ -7,11 +7,13 @@ from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from mixer_backend import AudioMixerBackend
 from mixer_window import MixerWindow
+from theme import STYLE_SHEET
 
 
 def main():
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
+    app.setStyleSheet(STYLE_SHEET)
 
     backend = AudioMixerBackend()
     window = MixerWindow(backend)
