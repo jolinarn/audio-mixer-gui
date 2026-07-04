@@ -46,6 +46,14 @@ pactl load-module module-null-sink sink_name=desktop_audio sink_properties=devic
 
 The app only manages sinks that already exist; it doesn't create them.
 
+## Adding to your application menu / launcher
+
+Copy `audio-mixer-gui.desktop.example` to
+`~/.local/share/applications/audio-mixer-gui.desktop`, fix the `Exec` path,
+and make `main.py` executable (`chmod +x main.py`). It'll then show up in
+your desktop environment's app menu/launcher (and anything that reads
+`.desktop` files, e.g. KRunner, rofi, etc.).
+
 ## Autostart
 
 To launch on login, add a `.desktop` file to `~/.config/autostart/` that

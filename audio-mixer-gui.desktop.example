@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Audio Mixer
+Comment=Mix and route audio across virtual sinks
+Exec=/path/to/audio-mixer-gui/main.py
+Icon=audio-volume-high
+Categories=AudioVideo;Audio;
+Terminal=false
+StartupNotify=true
